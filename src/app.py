@@ -6,6 +6,7 @@ for extracurricular activities at Mergington High School.
 """
 
 from fastapi import FastAPI, HTTPException, Depends, Request
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
@@ -38,10 +39,16 @@ def get_admin(request: Request):
     if not authenticate_admin(username, password):
         raise HTTPException(status_code=403, detail="Invalid admin credentials")
     return username
+
+# Modelo para login
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
 @app.post("/admin/login")
-def admin_login(username: str, password: str):
+def admin_login(data: AdminLoginRequest):
     """Login endpoint for admin"""
-    if authenticate_admin(username, password):
+    if authenticate_admin(data.username, data.password):
         return {"message": "Login successful"}
     else:
         raise HTTPException(status_code=403, detail="Invalid credentials")
