@@ -4,6 +4,49 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Admin login state
+  let adminUsername = "";
+  let adminPassword = "";
+
+  // Add admin login UI
+  const header = document.querySelector("header");
+  const adminLoginDiv = document.createElement("div");
+  adminLoginDiv.id = "admin-login";
+  adminLoginDiv.innerHTML = `
+    <label for="admin-username">Admin Username:</label>
+    <input type="text" id="admin-username" placeholder="professor1" />
+    <label for="admin-password">Password:</label>
+    <input type="password" id="admin-password" placeholder="senha123" />
+    <button id="admin-login-btn">Login</button>
+    <span id="admin-status" style="margin-left:10px;"></span>
+  `;
+  header.appendChild(adminLoginDiv);
+
+  document.getElementById("admin-login-btn").addEventListener("click", async () => {
+    const username = document.getElementById("admin-username").value;
+    const password = document.getElementById("admin-password").value;
+    try {
+      const response = await fetch("/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        adminUsername = username;
+        adminPassword = password;
+        document.getElementById("admin-status").textContent = "Logged in as admin";
+        document.getElementById("admin-status").style.color = "green";
+      } else {
+        document.getElementById("admin-status").textContent = "Login failed";
+        document.getElementById("admin-status").style.color = "red";
+      }
+    } catch (err) {
+      document.getElementById("admin-status").textContent = "Login error";
+      document.getElementById("admin-status").style.color = "red";
+    }
+  });
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -73,32 +116,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const activity = button.getAttribute("data-activity");
     const email = button.getAttribute("data-email");
 
+    if (!adminUsername || !adminPassword) {
+      messageDiv.textContent = "Admin login required to unregister.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      return;
+    }
+
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/unregister?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
         {
           method: "DELETE",
+          headers: {
+            "X-Admin-Username": adminUsername,
+            "X-Admin-Password": adminPassword
+          }
         }
       );
-
       const result = await response.json();
-
       if (response.ok) {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
-
-        // Refresh activities list to show updated participants
         fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
       }
-
       messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
       setTimeout(() => {
         messageDiv.classList.add("hidden");
       }, 5000);
@@ -113,37 +158,36 @@ document.addEventListener("DOMContentLoaded", () => {
   // Handle form submission
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-
     const email = document.getElementById("email").value;
     const activity = document.getElementById("activity").value;
-
+    if (!adminUsername || !adminPassword) {
+      messageDiv.textContent = "Admin login required to sign up.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      return;
+    }
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
+          headers: {
+            "X-Admin-Username": adminUsername,
+            "X-Admin-Password": adminPassword
+          }
         }
       );
-
       const result = await response.json();
-
       if (response.ok) {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
-
-        // Refresh activities list to show updated participants
         fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
       }
-
       messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
       setTimeout(() => {
         messageDiv.classList.add("hidden");
       }, 5000);
